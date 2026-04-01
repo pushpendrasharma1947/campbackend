@@ -193,9 +193,29 @@ async function query(text, params = []) {
   return querySQLite(text, params);
 }
 
+// Execute raw SQL directly on SQLite (for migrations)
+function execSQLite(sql) {
+  return new Promise((resolve, reject) => {
+    if (!sqliteDb) {
+      reject(new Error('SQLite not initialized'));
+      return;
+    }
+    
+    sqliteDb.exec(sql, (err) => {
+      if (err) {
+        console.error('SQLite exec error:', err.message);
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+
 module.exports = {
   query,
   pool,
   initSQLite,
   initSQLiteTables,
+  execSQLite,
 };
