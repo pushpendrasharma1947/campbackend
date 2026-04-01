@@ -9,14 +9,19 @@ const chatRouter = require('./routes/chat');
 const convRouter = require('./routes/conversations');
 const authRouter = require('./routes/auth');
 const itemsRouter = require('./routes/items');
-const { runMigrations } = require('./migrate'); // ✅ fixed
+const { runMigrations } = require('./migrate');
 const db = require('./db');
 const app = express();
 
 // Security middleware
 app.use(helmet());
 
-app.use(cors());
+// ✅ Updated CORS
+app.use(cors({
+  origin: ['https://campfrontend-nh.vercel.app', 'http://localhost:5173', 'http://localhost:3000'],
+  credentials: true
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
