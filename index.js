@@ -9,7 +9,7 @@ const chatRouter = require('./routes/chat');
 const convRouter = require('./routes/conversations');
 const authRouter = require('./routes/auth');
 const itemsRouter = require('./routes/items');
-const runMigrations = require('./migrate');
+const { runMigrations } = require('./migrate'); // ✅ fixed
 const db = require('./db');
 const app = express();
 
@@ -49,7 +49,6 @@ app.use('/api/items', generalLimiter, itemsRouter);
 // Health check endpoint
 app.get('/health', async (req, res) => {
   try {
-    // Check database connectivity
     await db.query('SELECT 1');
     res.json({ 
       status: 'ok', 
@@ -67,19 +66,13 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// Serve static frontend
-//app.use(express.static(path.join(__dirname, 'public')));
-//app.get('*', (req, res) => {
-  //res.sendFile(path.join(__dirname, 'public', 'index.html'));
-//});
-
 const PORT = process.env.PORT || 4000;
 
-(async function start(){
-  try{
+(async function start() {
+  try {
     await runMigrations();
     console.log('Migrations completed');
-  }catch(err){
+  } catch (err) {
     console.error('Migration error (continuing):', err.message);
   }
 
