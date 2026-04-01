@@ -30,11 +30,48 @@ function initSQLite() {
       } else {
         console.log('Using SQLite database:', dbPath);
         usingSQLite = true;
-        // Enable foreign keys
         sqliteDb.run('PRAGMA foreign_keys = ON');
       }
       resolve();
     });
+  });
+}
+
+// Execute raw SQL directly on SQLite (for migrations)
+function execSQLite(sql) {
+  return new Promise((resolve, reject) => {
+    if (!sqliteDb) {
+      reject(new Error('SQLite not initialized'));
+      return;
+    }
+    
+    const statements = sql
+      .split(';')
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+    
+    let index = 0;
+    
+    function executeNext() {
+      if (index >= statements.length) {
+        resolve();
+        return;
+      }
+      
+      const statement = statements[index];
+      index++;
+      
+      sqliteDb.run(statement, (err) => {
+        if (err) {
+          console.error('SQLite migration error:', err.message, 'in statement:', statement);
+          reject(err);
+        } else {
+          executeNext();
+        }
+      });
+    }
+    
+    executeNext();
   });
 }
 
@@ -90,24 +127,18 @@ async function initSQLiteTables() {
     );
   `;
 
-  return new Promise((resolve) => {
-    sqliteDb.exec(createTablesSQL, (err) => {
-      if (err) {
-        console.error('Error creating SQLite tables:', err.message);
-      } else {
-        console.log('SQLite tables initialized');
-      }
-      resolve();
-    });
-  });
+  try {
+    await execSQLite(createTablesSQL);
+    console.log('SQLite tables initialized');
+  } catch (err) {
+    console.error('Error creating SQLite tables:', err.message);
+  }
 }
 
 function querySQLite(text, params = []) {
   return new Promise((resolve, reject) => {
-    // Convert PostgreSQL format ($1, $2) to SQLite format (?)
     const sqliteText = text.replace(/\$\d+/g, '?');
     
-    // Handle INSERT...RETURNING
     if (sqliteText.trim().toUpperCase().includes('INSERT') && sqliteText.trim().toUpperCase().includes('RETURNING')) {
       const insertRegex = /INSERT\s+INTO\s+(\w+)\s*\((.*?)\)\s*VALUES\s*\((.*?)\)\s*RETURNING\s+(.*)/i;
       const match = sqliteText.match(insertRegex);
@@ -115,9 +146,7 @@ function querySQLite(text, params = []) {
       if (match) {
         const tableName = match[1];
         const columns = match[2].split(',').map(c => c.trim());
-        const returningColumns = match[4].split(',').map(c => c.trim());
         
-        // Extract values clause for a simpler INSERT
         const simpleInsert = sqliteText.replace(/RETURNING\s+.*$/i, '').trim();
         
         sqliteDb.run(simpleInsert, params, function(err) {
@@ -125,7 +154,6 @@ function querySQLite(text, params = []) {
             console.error('SQLite insert error:', err.message);
             reject(err);
           } else {
-            // Get the last inserted row
             const selectColumns = columns.length > 0 ? columns.join(', ') : '*';
             const selectQuery = `SELECT ${selectColumns} FROM ${tableName} ORDER BY rowid DESC LIMIT 1`;
             
@@ -149,7 +177,6 @@ function querySQLite(text, params = []) {
           console.error('SQLite query error:', err.message);
           reject(err);
         } else {
-          // Return in PostgreSQL format for compatibility
           resolve({ rows: rows || [], rowCount: rows ? rows.length : 0 });
         }
       });
@@ -168,12 +195,10 @@ function querySQLite(text, params = []) {
 
 // Query wrapper that works for both PostgreSQL and SQLite
 async function query(text, params = []) {
-  // If we're already using SQLite, use it directly
   if (usingSQLite && sqliteDb) {
     return querySQLite(text, params);
   }
 
-  // Try PostgreSQL if available
   if (pool) {
     try {
       return await pool.query(text, params);
@@ -183,7 +208,6 @@ async function query(text, params = []) {
     }
   }
 
-  // Fall back to SQLite
   if (!sqliteDb) {
     await initSQLite();
     await initSQLiteTables();
@@ -193,42 +217,6 @@ async function query(text, params = []) {
   return querySQLite(text, params);
 }
 
-// Execute raw SQL directly on SQLite (for migrations)
-function execSQLite(sql) {
-  return new Promise((resolve, reject) => {
-    if (!sqliteDb) {
-      reject(new Error('SQLite not initialized'));
-      return;
-    }
-    
-    // Split by semicolons and execute each statement
-    const statements = sql.split(';').map(s => s.trim()).filter(s => s.length > 0);
-    
-    let index = 0;
-    
-    function executeNext() {
-      if (index >= statements.length) {
-        resolve();
-        return;
-      }
-      
-      const statement = statements[index];
-      index++;
-      
-      sqliteDb.run(statement, (err) => {
-        if (err) {
-          console.error('SQLite migration error:', err.message, 'in statement:', statement);
-          reject(err);
-        } else {
-          executeNext();
-        }
-      });
-    }
-    
-    executeNext();
-  });
-}
-
 module.exports = {
   query,
   pool,
@@ -236,3 +224,4 @@ module.exports = {
   initSQLiteTables,
   execSQLite,
 };
+   
