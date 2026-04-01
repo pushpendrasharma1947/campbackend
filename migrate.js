@@ -4,14 +4,9 @@ const db = require('./db');
 
 async function runMigrations() {
   try {
-    // Ensure migrations table exists
-    await db.execSQLite(`
-      CREATE TABLE IF NOT EXISTS migrations (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE NOT NULL,
-        run_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+    // Initialize SQLite first if PostgreSQL isn't available
+    await db.initSQLite();
+    await db.initSQLiteTables();
 
     const migrationsDir = path.join(__dirname, 'migrations');
 
