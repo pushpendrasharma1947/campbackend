@@ -201,14 +201,31 @@ function execSQLite(sql) {
       return;
     }
     
-    sqliteDb.exec(sql, (err) => {
-      if (err) {
-        console.error('SQLite exec error:', err.message);
-        reject(err);
-      } else {
+    // Split by semicolons and execute each statement
+    const statements = sql.split(';').map(s => s.trim()).filter(s => s.length > 0);
+    
+    let index = 0;
+    
+    function executeNext() {
+      if (index >= statements.length) {
         resolve();
+        return;
       }
-    });
+      
+      const statement = statements[index];
+      index++;
+      
+      sqliteDb.run(statement, (err) => {
+        if (err) {
+          console.error('SQLite migration error:', err.message, 'in statement:', statement);
+          reject(err);
+        } else {
+          executeNext();
+        }
+      });
+    }
+    
+    executeNext();
   });
 }
 

@@ -1,7 +1,6 @@
 const fs = require('fs').promises;
 const path = require('path');
 const db = require('./db');
-const sqlite3 = require('sqlite3');
 
 async function runMigrations(){
   // Initialize SQLite if needed
@@ -44,12 +43,10 @@ async function runMigrations(){
       // Execute migration SQL using execSQLite for better CREATE TABLE handling
       const trimmedSql = sql.trim();
       if (trimmedSql) {
-        await db.execSQLite(trimmedSql).catch(err => {
-          console.warn(`Migration ${file} skipped (might be PostgreSQL-specific):`, err.message);
-        });
+        await db.execSQLite(trimmedSql);
+        console.log(`Applied migration: ${file}`);
+        await db.query('INSERT INTO migrations(name) VALUES($1)', [file]);
       }
-      await db.query('INSERT INTO migrations(name) VALUES($1)', [file]);
-      console.log(`Applied migration: ${file}`);
     }catch(err){
       console.error(`Failed migration ${file}:`, err.message);
       // Continue instead of throwing for development
