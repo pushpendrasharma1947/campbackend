@@ -68,10 +68,10 @@ app.get('/health', async (req, res) => {
 });
 
 // Serve static frontend
-app.use(express.static(path.join(__dirname, 'public')));
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+//app.use(express.static(path.join(__dirname, 'public')));
+//app.get('*', (req, res) => {
+  //res.sendFile(path.join(__dirname, 'public', 'index.html'));
+//});
 
 const PORT = process.env.PORT || 4000;
 
