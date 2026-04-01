@@ -7,7 +7,7 @@
     "dev": "nodemon index.js",
     "migrate": "node migrate.js",
     "prod": "NODE_ENV=production node index.production.js",
-    "postinstall": "echo skip migration during docker build"
+    "postinstall": "npm rebuild sqlite3"
   },
   "dependencies": {
     "axios": "^1.4.0",
